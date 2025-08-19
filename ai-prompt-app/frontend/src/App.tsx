@@ -4,7 +4,8 @@ import { SendOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import 'antd/dist/reset.css';
 import './App.css';
-
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import Design from './pages/Design';
 const { Header, Content } = Layout;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -64,80 +65,81 @@ function App() {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ background: '#001529', padding: '0 24px' }}>
-        <Title level={2} style={{ color: 'white', margin: '14px 0' }}>
-          <RobotOutlined /> AI Prompt Assistant
-        </Title>
-      </Header>
-      <Content style={{ padding: '24px', background: '#f0f2f5' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <Card style={{ marginBottom: 24, minHeight: 400, maxHeight: 600, overflow: 'auto' }}>
-            <List
-              dataSource={messages}
-              renderItem={(item) => (
-                <List.Item style={{ alignItems: 'flex-start', padding: '12px 0' }}>
-                  <List.Item.Meta
-                    avatar={
-                      <Avatar 
-                        icon={item.role === 'user' ? <UserOutlined /> : <RobotOutlined />}
-                        style={{ 
-                          backgroundColor: item.role === 'user' ? '#1890ff' : '#52c41a' 
-                        }}
-                      />
-                    }
-                    title={
-                      <Space>
-                        <Text strong>{item.role === 'user' ? 'You' : 'AI Assistant'}</Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {item.timestamp.toLocaleTimeString()}
-                        </Text>
-                      </Space>
-                    }
-                    description={
-                      <Text style={{ whiteSpace: 'pre-wrap' }}>{item.content}</Text>
-                    }
+      <Layout style={{ minHeight: '100vh' }}>
+            <Header style={{ background: '#001529', padding: '0 24px' }}>
+              <Title level={2} style={{ color: 'white', margin: '14px 0' }}>
+                <RobotOutlined /> AI Prompt Assistant
+                  <Link to="/design">Designs</Link> |{" "}
+              </Title>
+            </Header>
+            <Content style={{ padding: '24px', background: '#f0f2f5' }}>
+              <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+                <Card style={{ marginBottom: 24, minHeight: 400, maxHeight: 600, overflow: 'auto' }}>
+                  <List
+                    dataSource={messages}
+                    renderItem={(item) => (
+                      <List.Item style={{ alignItems: 'flex-start', padding: '12px 0' }}>
+                        <List.Item.Meta
+                          avatar={
+                            <Avatar 
+                              icon={item.role === 'user' ? <UserOutlined /> : <RobotOutlined />}
+                              style={{ 
+                                backgroundColor: item.role === 'user' ? '#1890ff' : '#52c41a' 
+                              }}
+                            />
+                          }
+                          title={
+                            <Space>
+                              <Text strong>{item.role === 'user' ? 'You' : 'AI Assistant'}</Text>
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                {item.timestamp.toLocaleTimeString()}
+                              </Text>
+                            </Space>
+                          }
+                          description={
+                            <Text style={{ whiteSpace: 'pre-wrap' }}>{item.content}</Text>
+                          }
+                        />
+                      </List.Item>
+                    )}
+                    locale={{ emptyText: 'No messages yet. Start a conversation!' }}
                   />
-                </List.Item>
-              )}
-              locale={{ emptyText: 'No messages yet. Start a conversation!' }}
-            />
-            {loading && (
-              <div style={{ textAlign: 'center', padding: 20 }}>
-                <Spin tip="AI is thinking..." />
+                  {loading && (
+                    <div style={{ textAlign: 'center', padding: 20 }}>
+                      <Spin tip="AI is thinking..." />
+                    </div>
+                  )}
+                </Card>
+                
+                <Card>
+                  <Space.Compact style={{ width: '100%' }} size="large">
+                    <TextArea
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Enter your prompt here... (Ctrl+Enter to send)"
+                      autoSize={{ minRows: 3, maxRows: 6 }}
+                      disabled={loading}
+                      style={{ resize: 'none' }}
+                    />
+                  </Space.Compact>
+                  <Button
+                    type="primary"
+                    icon={<SendOutlined />}
+                    onClick={handleSendPrompt}
+                    loading={loading}
+                    style={{ marginTop: 16, width: '100%' }}
+                    size="large"
+                  >
+                    Send Prompt
+                  </Button>
+                  <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
+                    Tip: Press Ctrl+Enter to send your message
+                  </Text>
+                </Card>
               </div>
-            )}
-          </Card>
-          
-          <Card>
-            <Space.Compact style={{ width: '100%' }} size="large">
-              <TextArea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Enter your prompt here... (Ctrl+Enter to send)"
-                autoSize={{ minRows: 3, maxRows: 6 }}
-                disabled={loading}
-                style={{ resize: 'none' }}
-              />
-            </Space.Compact>
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleSendPrompt}
-              loading={loading}
-              style={{ marginTop: 16, width: '100%' }}
-              size="large"
-            >
-              Send Prompt
-            </Button>
-            <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-              Tip: Press Ctrl+Enter to send your message
-            </Text>
-          </Card>
-        </div>
-      </Content>
-    </Layout>
+            </Content>
+      </Layout>
   );
 }
 
