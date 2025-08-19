@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Layout, Input, Button, Card, Space, Typography, Spin, message, List, Avatar } from 'antd';
-import { SendOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Layout, Input, Button, Card, Space, Typography, Spin, message, List, Avatar, Select, Tabs, Image, Tag, Divider, Switch } from 'antd';
+import { SendOutlined, RobotOutlined, UserOutlined, PictureOutlined, MessageOutlined, BgColorsOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import 'antd/dist/reset.css';
 import './App.css';
@@ -8,17 +8,51 @@ import './App.css';
 const { Header, Content } = Layout;
 const { TextArea } = Input;
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  type?: 'text' | 'image';
+  imageUrl?: string;
+  images?: string[];
+}
+
+interface StylePreset {
+  title: string;
+  value: string;
 }
 
 function App() {
   const [prompt, setPrompt] = useState('');
+  const [imagePrompt, setImagePrompt] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('1');
+  const [selectedStyle, setSelectedStyle] = useState('photorealistic, highly detailed, real-world, realistic lighting');
+  const [styles, setStyles] = useState<StylePreset[]>([]);
+  const [imageMode, setImageMode] = useState(false);
+
+  // Fetch available styles on component mount
+  useEffect(() => {
+    fetchStyles();
+  }, []);
+
+  const fetchStyles = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/image/styles');
+      if (response.data.success) {
+        setStyles(response.data.styles);
+        if (response.data.styles.length > 0) {
+          setSelectedStyle(response.data.styles[5].value); // Default to Realistic
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching styles:', error);
+    }
+  };
 
   const handleSendPrompt = async () => {
     if (!prompt.trim()) {
@@ -37,6 +71,7 @@ function App() {
     setLoading(true);
 
     try {
+      // how to use dotenv
       const response = await axios.post('http://localhost:5000/api/prompt', {
         prompt: prompt,
         messages: messages
@@ -57,9 +92,56 @@ function App() {
     }
   };
 
+  const handleGenerateImage = async () => {
+    if (!imagePrompt.trim()) {
+      message.warning('Please enter an image description');
+      return;
+    }
+
+    const userMessage: Message = {
+      role: 'user',
+      content: `Generate image: ${imagePrompt}`,
+      timestamp: new Date(),
+      type: 'text'
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setImagePrompt('');
+    setImageLoading(true);
+
+    try {
+      const response = await axios.post('http://localhost:5000/api/image/generate', {
+        prompt: imagePrompt,
+        style: selectedStyle
+      });
+
+      if (response.data.success && response.data.images) {
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: `Generated image: "${response.data.prompt}"`,
+          timestamp: new Date(),
+          type: 'image',
+          images: response.data.images
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+        message.success('Image generated successfully!');
+      }
+    } catch (error) {
+      console.error('Error generating image:', error);
+      message.error('Failed to generate image. Please make sure Sogni AI is configured correctly.');
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && e.ctrlKey) {
-      handleSendPrompt();
+      if (imageMode) {
+        handleGenerateImage();
+      } else {
+        handleSendPrompt();
+      }
     }
   };
 
@@ -95,44 +177,151 @@ function App() {
                       </Space>
                     }
                     description={
-                      <Text style={{ whiteSpace: 'pre-wrap' }}>{item.content}</Text>
+                      <>
+                        <Text style={{ whiteSpace: 'pre-wrap' }}>{item.content}</Text>
+                        {item.type === 'image' && item.images && (
+                          <div style={{ marginTop: 16 }}>
+                            <Space wrap size={16}>
+                              {item.images.map((url, index) => (
+                                <Image
+                                  key={index}
+                                  width={300}
+                                  src={url}
+                                  alt={`Generated image ${index + 1}`}
+                                  style={{ borderRadius: 8 }}
+                                  placeholder={
+                                    <div style={{ 
+                                      width: 300, 
+                                      height: 300, 
+                                      display: 'flex', 
+                                      justifyContent: 'center', 
+                                      alignItems: 'center',
+                                      background: '#f0f0f0'
+                                    }}>
+                                      <Spin />
+                                    </div>
+                                  }
+                                />
+                              ))}
+                            </Space>
+                          </div>
+                        )}
+                      </>
                     }
                   />
                 </List.Item>
               )}
               locale={{ emptyText: 'No messages yet. Start a conversation!' }}
             />
-            {loading && (
+            {(loading || imageLoading) && (
               <div style={{ textAlign: 'center', padding: 20 }}>
-                <Spin tip="AI is thinking..." />
+                <Spin tip={imageLoading ? "🎨 Generating your image..." : "AI is thinking..."} />
               </div>
             )}
           </Card>
           
           <Card>
-            <Space.Compact style={{ width: '100%' }} size="large">
-              <TextArea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Enter your prompt here... (Ctrl+Enter to send)"
-                autoSize={{ minRows: 3, maxRows: 6 }}
-                disabled={loading}
-                style={{ resize: 'none' }}
-              />
-            </Space.Compact>
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleSendPrompt}
-              loading={loading}
-              style={{ marginTop: 16, width: '100%' }}
-              size="large"
-            >
-              Send Prompt
-            </Button>
+            <Tabs 
+              activeKey={activeTab} 
+              onChange={(key) => {
+                setActiveTab(key);
+                setImageMode(key === '2');
+              }}
+              items={[
+                {
+                  key: '1',
+                  label: (
+                    <span>
+                      <MessageOutlined /> Text Chat
+                    </span>
+                  ),
+                  children: (
+                    <>
+                      <Space.Compact style={{ width: '100%' }} size="large">
+                        <TextArea
+                          value={prompt}
+                          onChange={(e) => setPrompt(e.target.value)}
+                          onKeyPress={handleKeyPress}
+                          placeholder="Enter your prompt here... (Ctrl+Enter to send)"
+                          autoSize={{ minRows: 3, maxRows: 6 }}
+                          disabled={loading}
+                          style={{ resize: 'none' }}
+                        />
+                      </Space.Compact>
+                      <Button
+                        type="primary"
+                        icon={<SendOutlined />}
+                        onClick={handleSendPrompt}
+                        loading={loading}
+                        style={{ marginTop: 16, width: '100%' }}
+                        size="large"
+                      >
+                        Send Message
+                      </Button>
+                    </>
+                  ),
+                },
+                {
+                  key: '2',
+                  label: (
+                    <span>
+                      <PictureOutlined /> Image Generation
+                    </span>
+                  ),
+                  children: (
+                    <>
+                      <Space direction="vertical" style={{ width: '100%' }} size="large">
+                        <div>
+                          <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                            <BgColorsOutlined /> Style:
+                          </Text>
+                          <Select
+                            value={selectedStyle}
+                            onChange={setSelectedStyle}
+                            style={{ width: '100%' }}
+                            placeholder="Select an image style"
+                          >
+                            {styles.map((style) => (
+                              <Option key={style.value} value={style.value}>
+                                {style.title}
+                              </Option>
+                            ))}
+                          </Select>
+                        </div>
+                        
+                        <div>
+                          <Text strong style={{ display: 'block', marginBottom: 8 }}>
+                            Description:
+                          </Text>
+                          <TextArea
+                            value={imagePrompt}
+                            onChange={(e) => setImagePrompt(e.target.value)}
+                            onKeyPress={handleKeyPress}
+                            placeholder="Describe the image you want to generate... (e.g., 'a beautiful sunset over mountains')"
+                            autoSize={{ minRows: 3, maxRows: 6 }}
+                            disabled={imageLoading}
+                            style={{ resize: 'none' }}
+                          />
+                        </div>
+                        
+                        <Button
+                          type="primary"
+                          icon={<PictureOutlined />}
+                          onClick={handleGenerateImage}
+                          loading={imageLoading}
+                          style={{ width: '100%' }}
+                          size="large"
+                        >
+                          Generate Image
+                        </Button>
+                      </Space>
+                    </>
+                  ),
+                },
+              ]}
+            />
             <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-              Tip: Press Ctrl+Enter to send your message
+              Tip: Press Ctrl+Enter to send your message or generate image
             </Text>
           </Card>
         </div>
