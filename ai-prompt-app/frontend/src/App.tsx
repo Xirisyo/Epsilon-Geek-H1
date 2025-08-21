@@ -4,6 +4,8 @@ import { SendOutlined, RobotOutlined, UserOutlined, PictureOutlined, MessageOutl
 import axios from 'axios';
 import 'antd/dist/reset.css';
 import './App.css';
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import Design from './pages/Design';
 
 const { Header, Content } = Layout;
 const { TextArea } = Input;
@@ -148,10 +150,12 @@ function App() {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Header style={{ background: '#001529', padding: '0 24px' }}>
-        <Title level={2} style={{ color: 'white', margin: '14px 0' }}>
-          <RobotOutlined /> AI Prompt Assistant
-        </Title>
-      </Header>
+              <Title level={2} style={{ color: 'white', margin: '14px 0' }}>
+                <RobotOutlined /> AI Prompt Assistant |{" "}
+                  <Link to="/design">Designs</Link> 
+              </Title>
+            </Header>
+
       <Content style={{ padding: '24px', background: '#f0f2f5' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <Card style={{ marginBottom: 24, minHeight: 400, maxHeight: 600, overflow: 'auto' }}>
